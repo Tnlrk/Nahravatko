@@ -1,0 +1,26 @@
+# Build výstupy
+/build/
+/out/
+
+# Přenosná distribuce (generuje se z buildu)
+/Nahravatko-portable/
+/Nahravatko-portable.zip
+
+# Stažené nástroje a přibalené binárky (CMake, Ninja, FFmpeg, Qt) — neverzovat
+/tools/
+
+# Runtime nastavení a záznamy
+/settings.ini
+/Záznamy/
+
+# IDE / editor
+.vs/
+.vscode/
+*.user
+
+# Logy z instalace nástrojů
+aqtinstall.log
+*.log
+
+# Interní záznam instalace prostředí (cesty specifické pro lokální počítač)
+/walkthrough.md
