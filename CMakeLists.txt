@@ -63,7 +63,8 @@ target_link_libraries(Nahravatko PRIVATE
 )
 
 # --- Post-build: přibalit ffmpeg.exe vedle výsledného .exe ---
-set(FFMPEG_EXE "${CMAKE_SOURCE_DIR}/tools/ffmpeg/ffmpeg-8.1.1-essentials_build/bin/ffmpeg.exe")
+set(FFMPEG_DIR "${CMAKE_SOURCE_DIR}/tools/ffmpeg/ffmpeg-8.1.1-essentials_build")
+set(FFMPEG_EXE "${FFMPEG_DIR}/bin/ffmpeg.exe")
 if(EXISTS "${FFMPEG_EXE}")
     add_custom_command(TARGET Nahravatko POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -71,6 +72,23 @@ if(EXISTS "${FFMPEG_EXE}")
         COMMENT "Kopiruji ffmpeg.exe do vystupni slozky")
 else()
     message(WARNING "ffmpeg.exe nenalezen na ${FFMPEG_EXE} — nebude pribalen")
+endif()
+
+# --- Post-build: licence pro distribuci (naše MIT + GPL FFmpegu / compliance) ---
+if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
+    add_custom_command(TARGET Nahravatko POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_SOURCE_DIR}/LICENSE" "$<TARGET_FILE_DIR:Nahravatko>/LICENSE.txt")
+endif()
+if(EXISTS "${FFMPEG_DIR}/LICENSE")
+    add_custom_command(TARGET Nahravatko POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${FFMPEG_DIR}/LICENSE" "$<TARGET_FILE_DIR:Nahravatko>/FFmpeg-LICENSE.txt")
+endif()
+if(EXISTS "${FFMPEG_DIR}/README.txt")
+    add_custom_command(TARGET Nahravatko POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${FFMPEG_DIR}/README.txt" "$<TARGET_FILE_DIR:Nahravatko>/FFmpeg-README.txt")
 endif()
 
 # --- Post-build: nasadit Qt runtime DLL přes windeployqt ---
