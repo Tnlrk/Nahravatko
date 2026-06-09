@@ -310,7 +310,9 @@ void MainWindow::onModeChanged()
     const bool audioOnly = (m_mode->currentIndex() == 1);
     m_videoGroup->setVisible(!audioOnly);
     updateVideoPreview();
-    fitToContent();   // přizpůsobit výšku okna (video vs. jen zvuk)
+    // Odloženě (stejně jako u změny monitoru) — až se layout/DPI usadí,
+    // jinak by okno po přepnutí režimu na jiném monitoru zůstalo v původní velikosti.
+    QTimer::singleShot(0, this, [this] { fitToContent(); });
 }
 
 void MainWindow::onVideoSourceChanged()
@@ -401,8 +403,10 @@ void MainWindow::fitToContent()
     // Řeší i situaci po přechodu na monitor s jiným DPI, kdy rám okna nezmenší.
     setMinimumSize(0, 0);
     setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
-    if (centralWidget() && centralWidget()->layout())
+    if (centralWidget() && centralWidget()->layout()) {
         centralWidget()->layout()->invalidate();
+        centralWidget()->layout()->activate();   // vynutit okamžitý přepočet
+    }
     adjustSize();
     setFixedSize(size());
 }
