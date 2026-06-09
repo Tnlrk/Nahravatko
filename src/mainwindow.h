@@ -29,6 +29,7 @@ class QProgressBar;
 class QMenu;
 class QAction;
 class QTimer;
+class QShowEvent;
 class AudioCapture;
 class VideoCapture;
 
@@ -41,6 +42,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    void showEvent(QShowEvent* event) override;
 
 private slots:
     void onModeChanged();
@@ -65,6 +67,7 @@ private:
     void updateAudioMonitors();   // zapne/vypne VU metry (mikrofon + systém) mimo nahrávání
     void updateVideoPreview();    // spustí/zastaví živý náhled dle zdroje a režimu
     void setAlwaysOnTop(bool on);
+    void fitToContent();   // přepočítá velikost okna na obsah (i po změně DPI/monitoru)
     void loadSettings();
     void saveSettings();
     RecorderEngine::Config makeConfig() const;
@@ -108,6 +111,7 @@ private:
     QElapsedTimer m_elapsed;
     bool m_recording = false;
     bool m_forceQuit = false;
+    bool m_screenHooked = false;
 
     // Evidence zdrojů
     std::vector<win32util::MonitorInfo> m_monitors;

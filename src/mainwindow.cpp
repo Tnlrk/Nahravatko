@@ -23,6 +23,9 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QCloseEvent>
+#include <QShowEvent>
+#include <QWindow>
+#include <QScreen>
 #include <QPainter>
 #include <QPixmap>
 #include <QIcon>
@@ -201,9 +204,6 @@ void MainWindow::buildUi()
         cb->setMinimumContentsLength(26);
     }
 
-    // Okno se vždy přesně přizpůsobí obsahu (žádné smrsknutí náhledu) a správně
-    // se přepočítá i při změně DPI / přesunu na jiný monitor.
-    root->setSizeConstraint(QLayout::SetFixedSize);
     setCentralWidget(central);
 
     // --- Tray ---
@@ -309,7 +309,8 @@ void MainWindow::onModeChanged()
 {
     const bool audioOnly = (m_mode->currentIndex() == 1);
     m_videoGroup->setVisible(!audioOnly);
-    updateVideoPreview();   // velikost okna dorovná layout (SetFixedSize)
+    updateVideoPreview();
+    fitToContent();   // přizpůsobit výšku okna (video vs. jen zvuk)
 }
 
 void MainWindow::onVideoSourceChanged()
@@ -392,6 +393,31 @@ void MainWindow::showAbout()
     box.setText(html);
     box.setIconPixmap(makeStateIcon(false).pixmap(48, 48));
     box.exec();
+}
+
+void MainWindow::fitToContent()
+{
+    // Odemknout pevnou velikost, přepočítat layout a zafixovat na velikost obsahu.
+    // Řeší i situaci po přechodu na monitor s jiným DPI, kdy rám okna nezmenší.
+    setMinimumSize(0, 0);
+    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    if (centralWidget() && centralWidget()->layout())
+        centralWidget()->layout()->invalidate();
+    adjustSize();
+    setFixedSize(size());
+}
+
+void MainWindow::showEvent(QShowEvent* event)
+{
+    QMainWindow::showEvent(event);
+    // Při prvním zobrazení připojit reakci na změnu obrazovky (DPI) a dorovnat velikost.
+    if (!m_screenHooked && windowHandle()) {
+        m_screenHooked = true;
+        connect(windowHandle(), &QWindow::screenChanged, this, [this](QScreen*) {
+            QTimer::singleShot(0, this, [this] { fitToContent(); });
+        });
+    }
+    QTimer::singleShot(0, this, [this] { fitToContent(); });
 }
 
 void MainWindow::setAlwaysOnTop(bool on)
