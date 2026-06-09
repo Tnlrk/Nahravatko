@@ -1,2 +1,5 @@
+// Ikona aplikace (Explorer, hlavní panel) — nejnižší ID se použije jako ikona .exe
+1 ICON "app.ico"
+
 // Vloží app.manifest jako RT_MANIFEST (typ 24) s ID 1 (CREATEPROCESS_MANIFEST_RESOURCE_ID)
 1 24 "app.manifest"

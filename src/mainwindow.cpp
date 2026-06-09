@@ -27,6 +27,7 @@
 #include <QWindow>
 #include <QScreen>
 #include <QPainter>
+#include <QPen>
 #include <QPixmap>
 #include <QIcon>
 #include <QPalette>
@@ -643,13 +644,19 @@ void MainWindow::updateElapsed()
 
 QIcon MainWindow::makeStateIcon(bool recording) const
 {
-    QPixmap pm(32, 32);
-    pm.fill(Qt::transparent);
+    const QIcon brand(QStringLiteral(":/app.ico"));
+    if (!recording)
+        return brand;
+
+    // Při nahrávání: značka aplikace + červená tečka v rohu (indikace záznamu).
+    QPixmap pm = brand.pixmap(64, 64);
+    if (pm.isNull()) { pm = QPixmap(64, 64); pm.fill(Qt::transparent); }
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing, true);
-    p.setBrush(recording ? QColor(0xc0, 0x39, 0x2b) : QColor(0x55, 0x55, 0x55));
-    p.setPen(Qt::NoPen);
-    p.drawEllipse(4, 4, 24, 24);
+    const int d = 28;
+    p.setPen(QPen(Qt::white, 3));
+    p.setBrush(QColor(0xe0, 0x2b, 0x20));
+    p.drawEllipse(pm.width() - d - 2, pm.height() - d - 2, d, d);
     p.end();
     return QIcon(pm);
 }

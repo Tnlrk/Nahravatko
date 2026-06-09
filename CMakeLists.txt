@@ -4,6 +4,7 @@ project(Nahravatko VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
@@ -20,6 +21,7 @@ qt_add_executable(Nahravatko WIN32
     src/win32_utils.cpp
     src/win32_utils.h
     app.rc
+    resources.qrc
 )
 
 target_compile_definitions(Nahravatko PRIVATE
