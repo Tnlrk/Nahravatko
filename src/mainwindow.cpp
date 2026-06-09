@@ -648,15 +648,18 @@ QIcon MainWindow::makeStateIcon(bool recording) const
     if (!recording)
         return brand;
 
-    // Při nahrávání: značka aplikace + červená tečka v rohu (indikace záznamu).
-    QPixmap pm = brand.pixmap(64, 64);
-    if (pm.isNull()) { pm = QPixmap(64, 64); pm.fill(Qt::transparent); }
+    // Při nahrávání: značka aplikace + výrazná červená tečka v rohu (indikace záznamu).
+    const int S = 64;
+    QPixmap pm = brand.pixmap(S, S);
+    if (pm.isNull()) { pm = QPixmap(S, S); pm.fill(Qt::transparent); }
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing, true);
-    const int d = 28;
-    p.setPen(QPen(Qt::white, 3));
-    p.setBrush(QColor(0xe0, 0x2b, 0x20));
-    p.drawEllipse(pm.width() - d - 2, pm.height() - d - 2, d, d);
+    const int d = static_cast<int>(S * 0.55);          // velká tečka (~55 %)
+    const int x = S - d - 1;
+    const int y = S - d - 1;
+    p.setPen(QPen(Qt::white, S * 0.07));                 // bílý lem pro kontrast
+    p.setBrush(QColor(0xff, 0x1f, 0x1f));                // jasně červená
+    p.drawEllipse(x, y, d, d);
     p.end();
     return QIcon(pm);
 }
