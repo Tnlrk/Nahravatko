@@ -69,6 +69,23 @@ Aplikace nezachytává ani nekóduje sama — capture vrstva posílá raw snímk
 
 ---
 
+## Parametry nahrávek
+
+- **Video:** H.264 (`libx264`, preset *veryfast*), kvalita řízená přes **CRF** — tj. *konstantní kvalita*, ne pevný bitrate. Datový tok se proto mění podle obsahu (statický obraz zabírá výrazně méně než pohyblivé video).
+- **Zvuk:** AAC, kontejner MP4 (video) nebo M4A (pouze zvuk). Více zdrojů (mikrofon + systém) se sloučí do jedné stopy.
+- Snímkování: **30 fps**.
+
+| Kvalita | Rozlišení | Video (H.264) | Zvuk (AAC) | ~ datový tok\* | ~ velikost / hod\* |
+|---|---|---|---|---|---|
+| **Vysoká** | nativní | CRF 20 | 192 kbit/s | ~3–12 Mbit/s | ~1–2 GB |
+| **Střední** | max 1920×1080 | CRF 24 | 192 kbit/s | ~2–6 Mbit/s | ~0,4–0,8 GB |
+| **Nízká** | max 1280×720 | CRF 28 | 128 kbit/s | ~1–3 Mbit/s | ~0,15–0,3 GB |
+| **Pouze zvuk** | — | — | 192 kbit/s | 192 kbit/s | ~85 MB |
+
+\* Orientačně. Protože video používá CRF, datový tok i výsledná velikost hodně závisí na tom, kolik se na obrazovce hýbe — slidy a statický obraz jsou výrazně menší než plynulé video.
+
+---
+
 ## Sestavení ze zdrojů
 
 Potřebné nástroje (Windows):
