@@ -29,6 +29,8 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QIcon>
+#include <QPalette>
+#include <QFont>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QUrl>
@@ -126,7 +128,13 @@ void MainWindow::buildUi()
     m_preview = new QLabel(QStringLiteral("Náhled (připravuje se)"), this);
     m_preview->setFixedSize(320, 180);
     m_preview->setAlignment(Qt::AlignCenter);
-    m_preview->setStyleSheet(QStringLiteral("background:#202020; color:#888; border:1px solid #444;"));
+    // Barvy z palety (role Base/Text) → automaticky se přizpůsobí světlému i tmavému
+    // režimu. Zapuštěný rámeček vymezí plochu náhledu.
+    m_preview->setFrameShape(QFrame::StyledPanel);
+    m_preview->setFrameShadow(QFrame::Sunken);
+    m_preview->setAutoFillBackground(true);
+    m_preview->setBackgroundRole(QPalette::Base);
+    m_preview->setForegroundRole(QPalette::Text);
     vbox->addWidget(m_preview, 0, Qt::AlignHCenter);
 
     root->addWidget(m_videoGroup);
@@ -189,7 +197,13 @@ void MainWindow::buildUi()
     // --- Nahrávání ---
     auto* recRow = new QHBoxLayout();
     m_recordBtn = new QPushButton(QStringLiteral("● Nahrávat"), this);
-    m_recordBtn->setMinimumHeight(40);
+    m_recordBtn->setMinimumHeight(44);
+    {   // výraznější hlavní akce (čitelnost / přístupnost)
+        QFont rf = m_recordBtn->font();
+        rf.setPointSizeF(rf.pointSizeF() + 2.0);
+        rf.setBold(true);
+        m_recordBtn->setFont(rf);
+    }
     m_timeLabel = new QLabel(QStringLiteral("00:00"), this);
     m_timeLabel->setStyleSheet(QStringLiteral("font-size:18px; font-weight:bold;"));
     recRow->addWidget(m_recordBtn, 1);

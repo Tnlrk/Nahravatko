@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QGuiApplication>
+#include <QFont>
 #include <QSharedMemory>
 #include <QMessageBox>
 
@@ -13,6 +14,18 @@ int main(int argc, char *argv[])
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
     QApplication app(argc, argv);
+
+    // Mírně větší základní písmo pro lepší čitelnost (přístupnost).
+    {
+        QFont f = app.font();
+        if (f.pointSizeF() > 0) {
+            f.setPointSizeF(f.pointSizeF() + 1.0);
+            app.setFont(f);
+        }
+    }
+
+    // Světlý/tmavý režim se řídí nastavením systému automaticky (Qt 6.5+).
+
     QApplication::setApplicationName(QStringLiteral("Nahravatko"));
     QApplication::setOrganizationName(QStringLiteral("Nahravatko"));
     QApplication::setQuitOnLastWindowClosed(false); // okno se zavírá do tray, ne ukončení
