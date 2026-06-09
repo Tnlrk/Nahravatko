@@ -34,6 +34,8 @@
 - 🖼️ **Živý náhled** ještě před nahráváním a **ukazatele hlasitosti** (VU) u obou zvukových zdrojů.
 - 📦 **Dva výstupy** — *Video + zvuk* (MP4, H.264/AAC) nebo *Pouze zvuk* (M4A, AAC 192 kbps).
 - 🧰 **Pohodlí** — ikona v liště (při nahrávání zčervená), volba „Vždy nahoře", zavření do lišty, automatické otevření složky s hotovým záznamem, zapamatování voleb.
+- 🌗 **Vzhled a přístupnost** — světlý i tmavý režim automaticky podle nastavení Windows; čitelné ovládání i pro hůře vidící (respektuje zvětšení Windows).
+- 📁 **Ukládání** — záznamy jdou rovnou do tvé složky **Videa**, cestu lze kdykoliv změnit.
 - 💾 **Portable** — celé to běží z jedné složky, bez instalace a bez admin práv.
 
 ---
@@ -42,7 +44,7 @@
 
 1. Stáhni **[Nahravatko-portable.zip](https://github.com/Tnlrk/Nahravatko/releases/latest/download/Nahravatko-portable.zip)** a **rozbal** ho kamkoliv — na plochu, do složky, na USB.
 2. Spusť **`Nahravatko.exe`**.
-3. Nahraj. Hotové soubory se ukládají do složky `Záznamy` vedle `.exe`.
+3. Nahraj. Hotové soubory se ukládají do tvé složky **Videa** (`C:\Users\…\Videos`); cestu lze změnit tlačítkem *Změnit složku*.
 
 > [!IMPORTANT]
 > Celá složka musí zůstat pohromadě — `Nahravatko.exe` potřebuje vedle sebe všechny `.dll`, podsložky (`platforms`, `styles`, …) a `ffmpeg.exe`. Nekopíruj jen samotný `.exe`.
@@ -110,7 +112,9 @@ Podrobnosti k zadání a architektuře viz [docs/prd-screen-recorder.md](docs/pr
 
 ## Licence
 
-Aplikace používá přibalený **FFmpeg**, který je šířen pod vlastní licencí (GPL/LGPL podle konkrétního buildu) — při distribuci je nutné dodržet jeho licenční podmínky. FFmpeg je volán jako samostatný proces.
+Zdrojový kód Nahrávátka je uvolněn pod licencí **MIT** (viz [LICENSE](LICENSE)) — můžeš ho volně používat, upravovat i šířit, stačí zachovat údaj o autorství.
+
+Aplikace zároveň při běhu volá a v balíčku přibaluje **FFmpeg** (https://ffmpeg.org), který je šířen pod licencí **GPL/LGPL** podle konkrétního buildu. FFmpeg je samostatný program volaný jako externí proces, takže se jeho licence nevztahuje na kód Nahrávátka — ale při šíření balíčku s FFmpegem je nutné dodržet jeho licenční podmínky (přiložit licenci FFmpegu a odkaz na zdrojové kódy příslušného buildu).
 
 ---
 
