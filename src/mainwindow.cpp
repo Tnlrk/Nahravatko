@@ -19,6 +19,7 @@
 #include <QTimer>
 #include <QSettings>
 #include <QDir>
+#include <QStandardPaths>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QCloseEvent>
@@ -46,7 +47,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     m_sysMonitor = new AudioCapture(this);
     m_videoPreview = new VideoCapture(this);
 
-    m_outputDir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("Záznamy"));
+    // Výchozí složka = systémové „Videa" uživatele (C:\Users\<jméno>\Videos),
+    // univerzální na každém PC. Fallback na složku vedle aplikace.
+    m_outputDir = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
+    if (m_outputDir.isEmpty())
+        m_outputDir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("Záznamy"));
 
     buildUi();
     populateAudioDevices();
@@ -189,8 +194,17 @@ void MainWindow::buildUi()
     root->addLayout(recRow);
     connect(m_recordBtn, &QPushButton::clicked, this, &MainWindow::onRecordClicked);
 
+    // Comboboxy nesmí roztahovat okno podle nejdelší položky (např. dlouhé názvy
+    // oken). Omezíme zobrazenou délku; v rozbalení i tooltipu zůstává text celý.
+    for (QComboBox* cb : { static_cast<QComboBox*>(m_videoSource), m_mode, m_quality, m_micDevice }) {
+        cb->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        cb->setMinimumContentsLength(26);
+    }
+
+    // Okno se vždy přesně přizpůsobí obsahu (žádné smrsknutí náhledu) a správně
+    // se přepočítá i při změně DPI / přesunu na jiný monitor.
+    root->setSizeConstraint(QLayout::SetFixedSize);
     setCentralWidget(central);
-    setFixedWidth(420);
 
     // --- Tray ---
     m_trayMenu = new QMenu(this);
@@ -295,8 +309,7 @@ void MainWindow::onModeChanged()
 {
     const bool audioOnly = (m_mode->currentIndex() == 1);
     m_videoGroup->setVisible(!audioOnly);
-    adjustSize();
-    updateVideoPreview();
+    updateVideoPreview();   // velikost okna dorovná layout (SetFixedSize)
 }
 
 void MainWindow::onVideoSourceChanged()
@@ -543,7 +556,6 @@ void MainWindow::onEngineError(const QString& message)
     if (m_recording) setRecordingState(false);
     m_recordBtn->setEnabled(true);
     m_recordBtn->setText(QStringLiteral("● Nahrávat"));
-    statusBar()->showMessage(message, 6000);
     QMessageBox::warning(this, QStringLiteral("Nahrávátko"), message);
     updateAudioMonitors();
     updateVideoPreview();
