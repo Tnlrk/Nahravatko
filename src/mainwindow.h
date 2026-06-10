@@ -30,6 +30,7 @@ class QMenu;
 class QAction;
 class QTimer;
 class QShowEvent;
+class QNetworkAccessManager;
 class AudioCapture;
 class VideoCapture;
 
@@ -57,6 +58,7 @@ private slots:
     void onVideoPreview(const QImage& frame);
     void onVideoSourceChanged();
     void showAbout();
+    void checkForUpdates();   // tichá kontrola nové verze na GitHubu
     void updateElapsed();
 
 private:
@@ -104,6 +106,7 @@ private:
     AudioCapture* m_micMonitor = nullptr;
     AudioCapture* m_sysMonitor = nullptr;
     VideoCapture* m_videoPreview = nullptr;
+    QNetworkAccessManager* m_net = nullptr;   // kontrola aktualizací
 
     // Stav
     QString m_outputDir;

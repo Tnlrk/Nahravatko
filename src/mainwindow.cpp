@@ -36,6 +36,12 @@
 #include <QDesktopServices>
 #include <QUrl>
 #include <QProcess>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QVersionNumber>
 
 namespace {
 const QString kAppVersion = QStringLiteral("1.0");
@@ -92,6 +98,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 
     setWindowTitle(QStringLiteral("Nahrávátko"));
     setWindowIcon(makeStateIcon(false));
+
+    // Tichá kontrola nové verze chvíli po startu (neblokuje spuštění).
+    QTimer::singleShot(3000, this, &MainWindow::checkForUpdates);
 }
 
 MainWindow::~MainWindow() = default;
@@ -422,6 +431,49 @@ void MainWindow::showAbout()
     box.setText(html);
     box.setIconPixmap(makeStateIcon(false).pixmap(48, 48));
     box.exec();
+}
+
+void MainWindow::checkForUpdates()
+{
+    if (!m_net) m_net = new QNetworkAccessManager(this);
+
+    QNetworkRequest req(QUrl(QStringLiteral(
+        "https://api.github.com/repos/Tnlrk/Nahravatko/releases/latest")));
+    req.setHeader(QNetworkRequest::UserAgentHeader,
+                  QStringLiteral("Nahravatko/") + kAppVersion);
+    req.setTransferTimeout(7000);
+
+    QNetworkReply* reply = m_net->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) return;   // offline apod. → ticho
+
+        const QJsonObject obj = QJsonDocument::fromJson(reply->readAll()).object();
+        QString tag = obj.value(QStringLiteral("tag_name")).toString();
+        if (tag.startsWith(QLatin1Char('v'), Qt::CaseInsensitive)) tag.remove(0, 1);
+
+        const QVersionNumber remote = QVersionNumber::fromString(tag);
+        const QVersionNumber local = QVersionNumber::fromString(kAppVersion);
+        if (remote.isNull() || QVersionNumber::compare(remote, local) <= 0) return;
+        if (m_recording) return;   // nerušit běžící záznam
+
+        QString url = obj.value(QStringLiteral("html_url")).toString();
+        if (url.isEmpty())
+            url = QStringLiteral("https://github.com/Tnlrk/Nahravatko/releases/latest");
+
+        QMessageBox box(this);
+        box.setWindowTitle(QStringLiteral("Nahrávátko — aktualizace"));
+        box.setIcon(QMessageBox::Information);
+        box.setText(QStringLiteral("Je k dispozici nová verze %1 (nainstalovaná: %2).")
+                        .arg(tag, kAppVersion));
+        box.setInformativeText(QStringLiteral(
+            "Stáhněte nový balíček a nahraďte jím současnou složku aplikace."));
+        auto* dlBtn = box.addButton(QStringLiteral("Stáhnout"), QMessageBox::AcceptRole);
+        box.addButton(QStringLiteral("Později"), QMessageBox::RejectRole);
+        box.exec();
+        if (box.clickedButton() == dlBtn)
+            QDesktopServices::openUrl(QUrl(url));
+    });
 }
 
 void MainWindow::fitToContent()

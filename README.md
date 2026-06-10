@@ -35,6 +35,7 @@
 - 📦 **Dva výstupy** — *Video + zvuk* (MP4, H.264/AAC) nebo *Pouze zvuk* (M4A, AAC 192 kbps).
 - 🧰 **Pohodlí** — ikona v liště (při nahrávání zčervená), volba „Vždy nahoře", zavření do lišty, automatické otevření složky s hotovým záznamem, zapamatování voleb.
 - 🌗 **Vzhled a přístupnost** — světlý i tmavý režim automaticky podle nastavení Windows; čitelné ovládání i pro hůře vidící (respektuje zvětšení Windows).
+- 🔔 **Hlídání aktualizací** — při startu se tiše zkontroluje, zda je na GitHubu novější verze; pokud ano, nabídne se stažení (nic se neinstaluje samo).
 - 📁 **Ukládání** — záznamy jdou rovnou do tvé složky **Videa**, cestu lze kdykoliv změnit.
 - 💾 **Portable** — celé to běží z jedné složky, bez instalace a bez admin práv.
 
