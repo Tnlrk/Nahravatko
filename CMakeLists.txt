@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
-project(Nahravatko VERSION 1.0.0 LANGUAGES CXX)
+project(Nahravatko VERSION 1.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network LinguistTools)
 
 qt_add_executable(Nahravatko WIN32
     src/main.cpp
@@ -26,6 +26,15 @@ qt_add_executable(Nahravatko WIN32
 
 target_compile_definitions(Nahravatko PRIVATE
     UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN
+)
+
+# --- Lokalizace ---
+# .ts je zdroj (verzovaný, překládá se v Qt Linguist). lrelease vyrobí .qm při buildu
+# a qt_add_translations ho vloží přímo do exe pod prefix :/i18n/ (viz main.cpp).
+# lupdate se spouští ručně cílem „update_translations" po přidání nových tr() řetězců.
+qt_add_translations(Nahravatko
+    TS_FILES translations/nahravatko_en.ts
+    RESOURCE_PREFIX "/i18n"
 )
 
 # /utf-8: zdrojáky jsou v UTF-8 (české řetězce); /bigobj kvůli WinRT hlavičkám

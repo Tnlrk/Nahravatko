@@ -157,7 +157,7 @@ void VideoCapture::run()
                 D3D11_CREATE_DEVICE_BGRA_SUPPORT, nullptr, 0, D3D11_SDK_VERSION,
                 d3dDevice.put(), &fl, d3dContext.put());
         }
-        if (FAILED(hr)) { fail(QStringLiteral("Nepodařilo se inicializovat grafiku.")); return; }
+        if (FAILED(hr)) { fail(tr("Nepodařilo se inicializovat grafiku.")); return; }
 
         auto dxgiDevice = d3dDevice.as<IDXGIDevice>();
         auto winrtDevice = createWinrtDevice(dxgiDevice.get());
@@ -173,16 +173,16 @@ void VideoCapture::run()
             hr = interop->CreateForMonitor(
                 m_monitor, winrt::guid_of<wgc::GraphicsCaptureItem>(), winrt::put_abi(item));
         } else {
-            fail(QStringLiteral("Není vybrán zdroj obrazu.")); return;
+            fail(tr("Není vybrán zdroj obrazu.")); return;
         }
-        if (FAILED(hr) || !item) { fail(QStringLiteral("Nepodařilo se otevřít zdroj obrazu.")); return; }
+        if (FAILED(hr) || !item) { fail(tr("Nepodařilo se otevřít zdroj obrazu.")); return; }
 
         auto size = item.Size();
         // Výstupní rozměr sudý (yuv420p), ale staging musí mít PŘESNĚ velikost itemu
         // (CopyResource vyžaduje shodu) — proto liché okno = staging na size, výstup zarovnán dolů.
         m_outW = size.Width & ~1;
         m_outH = size.Height & ~1;
-        if (m_outW <= 0 || m_outH <= 0) { fail(QStringLiteral("Neplatný rozměr zdroje obrazu.")); return; }
+        if (m_outW <= 0 || m_outH <= 0) { fail(tr("Neplatný rozměr zdroje obrazu.")); return; }
 
         auto makeStaging = [&](int w, int h) -> winrt::com_ptr<ID3D11Texture2D> {
             D3D11_TEXTURE2D_DESC desc{};
@@ -343,7 +343,7 @@ void VideoCapture::run()
     } catch (winrt::hresult_error const& e) {
         fail(QString::fromWCharArray(e.message().c_str()));
     } catch (...) {
-        fail(QStringLiteral("Chyba při zachytávání obrazu."));
+        fail(tr("Chyba při zachytávání obrazu."));
     }
 
     if (m_pipe != INVALID_HANDLE_VALUE) {

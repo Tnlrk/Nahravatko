@@ -1,4 +1,6 @@
-# Nahrávátko
+# Nahrávátko / Captaculum
+
+*Anglické rozhraní aplikace běží pod názvem **Captaculum** (latinsky „malé zachytávátko"); v češtině zůstává **Nahrávátko**. Jde o jednu a tu samou aplikaci.*
 
 **Jednoduché přenosné nahrávátko obrazovky a zvuku pro Windows.**
 

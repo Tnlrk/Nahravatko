@@ -4,6 +4,9 @@
 #include <cwchar>
 #include <vector>
 
+#include <QCoreApplication>
+#include <QString>
+
 #include <windows.h>
 #include <dwmapi.h>
 #include <mmdeviceapi.h>
@@ -147,7 +150,8 @@ std::vector<MonitorInfo> enumMonitors()
                         reinterpret_cast<LPARAM>(&monitors));
 
     for (size_t i = 0; i < monitors.size(); ++i)
-        monitors[i].name = L"Obrazovka " + std::to_wstring(i + 1);
+        monitors[i].name = QCoreApplication::translate("win32util", "Obrazovka %1")
+                               .arg(i + 1).toStdWString();
 
     return monitors;
 }
@@ -197,7 +201,9 @@ std::vector<AudioDevice> enumAudioDevices(bool capture)
                 PropVariantClear(&name);
                 store->Release();
             }
-            if (entry.name.empty()) entry.name = L"(neznámé zařízení)";
+            if (entry.name.empty())
+                entry.name = QCoreApplication::translate("win32util", "(neznámé zařízení)")
+                                 .toStdWString();
             devices.push_back(entry);
             device->Release();
         }

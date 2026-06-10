@@ -171,7 +171,7 @@ void AudioCapture::run()
 
     HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr,
                                   CLSCTX_ALL, IID_PPV_ARGS(&enumerator));
-    if (FAILED(hr)) { fail(QStringLiteral("Nepodařilo se inicializovat zvuk.")); cleanup(); return; }
+    if (FAILED(hr)) { fail(tr("Nepodařilo se inicializovat zvuk.")); cleanup(); return; }
 
     const bool loopback = (m_source == Source::SystemLoopback);
     if (loopback) {
@@ -182,14 +182,14 @@ void AudioCapture::run()
         hr = enumerator->GetDefaultAudioEndpoint(eCapture, eConsole, &device);
     }
     if (FAILED(hr) || !device) {
-        fail(QStringLiteral("Nepodařilo se najít zvukové zařízení.")); cleanup(); return;
+        fail(tr("Nepodařilo se najít zvukové zařízení.")); cleanup(); return;
     }
 
     hr = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&client);
-    if (FAILED(hr)) { fail(QStringLiteral("Nepodařilo se otevřít zvukové zařízení.")); cleanup(); return; }
+    if (FAILED(hr)) { fail(tr("Nepodařilo se otevřít zvukové zařízení.")); cleanup(); return; }
 
     hr = client->GetMixFormat(&wfx);
-    if (FAILED(hr) || !wfx) { fail(QStringLiteral("Nepodařilo se zjistit formát zvuku.")); cleanup(); return; }
+    if (FAILED(hr) || !wfx) { fail(tr("Nepodařilo se zjistit formát zvuku.")); cleanup(); return; }
 
     const bool isFloat = formatIsFloat(wfx);
     const WORD blockAlign = wfx->nBlockAlign;
@@ -198,10 +198,10 @@ void AudioCapture::run()
     const DWORD streamFlags = loopback ? AUDCLNT_STREAMFLAGS_LOOPBACK : 0;
     hr = client->Initialize(AUDCLNT_SHAREMODE_SHARED, streamFlags,
                             kRefTimesPerSec, 0, wfx, nullptr);
-    if (FAILED(hr)) { fail(QStringLiteral("Nepodařilo se spustit zachytávání zvuku.")); cleanup(); return; }
+    if (FAILED(hr)) { fail(tr("Nepodařilo se spustit zachytávání zvuku.")); cleanup(); return; }
 
     hr = client->GetService(IID_PPV_ARGS(&capture));
-    if (FAILED(hr)) { fail(QStringLiteral("Nepodařilo se spustit zachytávání zvuku.")); cleanup(); return; }
+    if (FAILED(hr)) { fail(tr("Nepodařilo se spustit zachytávání zvuku.")); cleanup(); return; }
 
     // --- nahlásit formát ---
     {

@@ -172,7 +172,7 @@ bool RecorderEngine::start(const Config& cfg)
     // 1a) Připravit VIDEO (zjistí výstupní rozměr pro -s WxH).
     if (wantVideo) {
         if (cfg.monitor == nullptr && cfg.window == nullptr) {
-            emit error(QStringLiteral("Není vybrán zdroj obrazu."));
+            emit error(tr("Není vybrán zdroj obrazu."));
             return false;
         }
         m_vidCap = std::make_unique<VideoCapture>();
@@ -181,7 +181,7 @@ bool RecorderEngine::start(const Config& cfg)
         connect(m_vidCap.get(), &VideoCapture::previewFrame,
                 this, &RecorderEngine::videoPreview);
         if (!m_vidCap->prepareForRecording()) {
-            emit error(QStringLiteral("Nepodařilo se otevřít zdroj obrazu."));
+            emit error(tr("Nepodařilo se otevřít zdroj obrazu."));
             teardown();
             return false;
         }
@@ -195,7 +195,7 @@ bool RecorderEngine::start(const Config& cfg)
         m_sysCap->setSource(AudioCapture::Source::SystemLoopback);
         connect(m_sysCap.get(), &AudioCapture::level, this, &RecorderEngine::sysLevel);
         if (!m_sysCap->prepareForRecording()) {
-            emit error(QStringLiteral("Nepodařilo se otevřít systémový zvuk."));
+            emit error(tr("Nepodařilo se otevřít systémový zvuk."));
             teardown();
             return false;
         }
@@ -207,7 +207,7 @@ bool RecorderEngine::start(const Config& cfg)
         m_micCap->setDeviceId(cfg.micDeviceId);
         connect(m_micCap.get(), &AudioCapture::level, this, &RecorderEngine::micLevel);
         if (!m_micCap->prepareForRecording()) {
-            emit error(QStringLiteral("Nepodařilo se otevřít mikrofon."));
+            emit error(tr("Nepodařilo se otevřít mikrofon."));
             teardown();
             return false;
         }
@@ -215,7 +215,7 @@ bool RecorderEngine::start(const Config& cfg)
     }
 
     if (!wantVideo && !cfg.useMicrophone && !cfg.useSystemAudio) {
-        emit error(QStringLiteral("Není vybrán žádný zdroj."));
+        emit error(tr("Není vybrán žádný zdroj."));
         teardown();
         return false;
     }
@@ -247,7 +247,7 @@ bool RecorderEngine::start(const Config& cfg)
         if (hVid != INVALID_HANDLE_VALUE) CloseHandle(hVid);
         if (hSys != INVALID_HANDLE_VALUE) CloseHandle(hSys);
         if (hMic != INVALID_HANDLE_VALUE) CloseHandle(hMic);
-        emit error(QStringLiteral("Nepodařilo se vytvořit rouru pro záznam."));
+        emit error(tr("Nepodařilo se vytvořit rouru pro záznam."));
         teardown();
         return false;
     }
@@ -267,7 +267,7 @@ bool RecorderEngine::start(const Config& cfg)
                 if (fi.exists() && fi.size() > 0) {
                     emit stopped(out);
                 } else {
-                    emit error(QStringLiteral(
+                    emit error(tr(
                         "Nahrávání selhalo — výstupní soubor se nepodařilo vytvořit "
                         "(kód %1). Zkontrolujte volné místo a cílovou složku.")
                                    .arg(exitCode));
@@ -278,7 +278,7 @@ bool RecorderEngine::start(const Config& cfg)
         if (hVid != INVALID_HANDLE_VALUE) CloseHandle(hVid);
         if (hSys != INVALID_HANDLE_VALUE) CloseHandle(hSys);
         if (hMic != INVALID_HANDLE_VALUE) CloseHandle(hMic);
-        emit error(QStringLiteral("Nepodařilo se spustit FFmpeg."));
+        emit error(tr("Nepodařilo se spustit FFmpeg."));
         teardown();
         return false;
     }

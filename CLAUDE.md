@@ -73,11 +73,20 @@ Kód: **MIT** (`LICENSE`). Přibalený **FFmpeg = GPL** → balíček musí obsa
 
 ---
 
-## Probíhající práce: anglická lokalizace (větev `i18n`)
+## Lokalizace: čeština + angličtina (větev `i18n`)
 
-**Cíl:** jedna **dvojjazyčná** aplikace (ne separátní anglická verze) přes Qt překladový systém.
+Jedna **dvojjazyčná** aplikace (ne separátní anglická verze) přes Qt překladový systém. **Hotovo a otestováno** (zbývá jen sloučení do `main` + vydání).
 
-1. Uživatelské řetězce `QStringLiteral("…")` → `tr("…")` (čeština zůstává jako zdroj — nepřepisovat). Pozor na: HTML v „O aplikaci", tray menu, dialogy, chybové hlášky v `recorder_engine`/`*_capture` (jsou v `QObject`, `tr()` funguje).
-2. `lupdate` → vytvořit `translations/nahravatko_en.ts`, přeložit v Qt Linguist, `lrelease` → `.qm`. (`lupdate`/`lrelease` jsou v `…\Qt\6.8.0\msvc2022_64\bin\`.)
-3. `.qm` přibalit (přes `resources.qrc` nebo vedle exe), načíst `QTranslator` podle `QLocale::system()` + přidat volbu **Jazyk: Automaticky / Čeština / English** (uložit do `settings.ini`, aplikovat restartem nebo retranslací UI).
-4. Otestovat oba jazyky (přepínač i systémové locale), pak sloučit do `main` a vydat jako novou verzi.
+**Jak to funguje:**
+- Uživatelské řetězce jsou `tr("…")` (čeština = **zdrojový jazyk**, zůstává v kódu — nepřepisovat). Volné funkce mimo `QObject` (`win32_utils.cpp`) používají `QCoreApplication::translate("win32util", "…")`.
+- Překlad: `translations/nahravatko_en.ts` (verzovaný zdroj překladu). `CMakeLists.txt` přes `qt_add_translations` při buildu spustí `lrelease` (.ts→.qm) a **vloží `.qm` přímo do exe** pod resource prefix `:/i18n/`.
+- `main.cpp` při startu načte volbu jazyka z `settings.ini` (klíč `language`: `auto`/`cs`/`en`) a pro angličtinu nainstaluje `QTranslator` z `:/i18n/nahravatko_en.qm`. `auto` = podle `QLocale::system()`. Pro češtinu se překladač neinstaluje (je to zdroj).
+- Volba **Jazyk: Automaticky / Čeština / English** je v dialogu **„O aplikaci"**; uloží se do `settings.ini` a **projeví se po restartu** (žádná živá retranslace). Tlačítko **Restartovat** se objeví po změně jazyka a appku rovnou restartuje (nová instance dostane `--restarted` a počká na uvolnění single-instance zámku).
+- **Dvojí název značky:** UI se zobrazuje jako **„Nahrávátko"** (cs) / **„Captaculum"** (en) přes `appDisplayName()` = `QCoreApplication::translate("App", "Nahrávátko")`. **Interní identifikátory zůstávají `Nahravatko`** (`applicationName`, `settings.ini`, single-instance klíč, GitHub repo `Tnlrk/Nahravatko` i URL kontroly aktualizací) — nepřejmenovávat, jinak se rozbije kontrola aktualizací. Texty se značkou uvnitř používají `%1` + `appDisplayName()`.
+
+**Po přidání nových `tr()` řetězců:**
+1. `cmake --build build --target update_translations` (spustí `lupdate`, doplní nové položky do `.ts`).
+2. Přeložit nové položky v Qt Linguist (`…\Qt\6.8.0\msvc2022_64\bin\linguist.exe`) — nebo ručně v `.ts`.
+3. Normální build (`cmake --build build`) vyrobí `.qm` a vloží ho do exe.
+
+> `.qm` je build artefakt (v `build/`, negitovat) — verzuje se jen `.ts`. Pozn.: `language`/`micDevice` apod. se v `settings.ini` ukládají; klíč `language` čte i `main.cpp` ještě před vytvořením okna.

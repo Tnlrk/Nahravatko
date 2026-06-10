@@ -22,6 +22,9 @@
 #include <QStandardPaths>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QTranslator>
 #include <QCloseEvent>
 #include <QShowEvent>
 #include <QWindow>
@@ -43,12 +46,32 @@
 #include <QJsonObject>
 #include <QVersionNumber>
 
+// Značka podle jazyka — česky „Nahrávátko" (zdroj), anglicky „Captaculum" (překlad).
+QString appDisplayName()
+{
+    return QCoreApplication::translate("App", "Nahrávátko");
+}
+
 namespace {
-const QString kAppVersion = QStringLiteral("1.0");
+const QString kAppVersion = QStringLiteral("1.1");
 
 QString iniPath()
 {
     return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("settings.ini"));
+}
+
+// Volba jazyka uložená v settings.ini: "auto" / "cs" / "en".
+// Čte ji i main.cpp (instaluje QTranslator už při startu, před vytvořením okna).
+QString currentLanguageSetting()
+{
+    QSettings s(iniPath(), QSettings::IniFormat);
+    return s.value(QStringLiteral("language"), QStringLiteral("auto")).toString();
+}
+
+void saveLanguageSetting(const QString& lang)
+{
+    QSettings s(iniPath(), QSettings::IniFormat);
+    s.setValue(QStringLiteral("language"), lang);
 }
 } // namespace
 
@@ -96,7 +119,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     m_elapsedTimer->setInterval(500);
     connect(m_elapsedTimer, &QTimer::timeout, this, &MainWindow::updateElapsed);
 
-    setWindowTitle(QStringLiteral("Nahrávátko"));
+    setWindowTitle(appDisplayName());
     setWindowIcon(makeStateIcon(false));
 
     // Tichá kontrola nové verze chvíli po startu (neblokuje spuštění).
@@ -113,29 +136,29 @@ void MainWindow::buildUi()
     // --- Režim ---
     auto* modeRow = new QFormLayout();
     m_mode = new QComboBox(this);
-    m_mode->addItem(QStringLiteral("Video + zvuk (MP4)"));
-    m_mode->addItem(QStringLiteral("Pouze zvuk (AAC)"));
-    modeRow->addRow(QStringLiteral("Co nahrávat:"), m_mode);
+    m_mode->addItem(tr("Video + zvuk (MP4)"));
+    m_mode->addItem(tr("Pouze zvuk (AAC)"));
+    modeRow->addRow(tr("Co nahrávat:"), m_mode);
     root->addLayout(modeRow);
     connect(m_mode, &QComboBox::currentIndexChanged, this, &MainWindow::onModeChanged);
 
     // --- Video skupina (zdroj + kvalita + náhled) ---
-    m_videoGroup = new QGroupBox(QStringLiteral("Obraz"), this);
+    m_videoGroup = new QGroupBox(tr("Obraz"), this);
     auto* vbox = new QVBoxLayout(m_videoGroup);
 
     auto* srcRow = new QFormLayout();
     m_videoSource = new SourceComboBox(this);
-    srcRow->addRow(QStringLiteral("Zdroj:"), m_videoSource);
+    srcRow->addRow(tr("Zdroj:"), m_videoSource);
 
     m_quality = new QComboBox(this);
-    m_quality->addItem(QStringLiteral("Vysoká kvalita (největší soubory)"));
-    m_quality->addItem(QStringLiteral("Střední kvalita (doporučeno)"));
-    m_quality->addItem(QStringLiteral("Nízká kvalita (malé soubory)"));
+    m_quality->addItem(tr("Vysoká kvalita (největší soubory)"));
+    m_quality->addItem(tr("Střední kvalita (doporučeno)"));
+    m_quality->addItem(tr("Nízká kvalita (malé soubory)"));
     m_quality->setCurrentIndex(1);
-    srcRow->addRow(QStringLiteral("Kvalita:"), m_quality);
+    srcRow->addRow(tr("Kvalita:"), m_quality);
     vbox->addLayout(srcRow);
 
-    m_preview = new QLabel(QStringLiteral("Náhled (připravuje se)"), this);
+    m_preview = new QLabel(tr("Náhled (připravuje se)"), this);
     m_preview->setFixedSize(320, 180);
     m_preview->setAlignment(Qt::AlignCenter);
     // Barvy z palety (role Base/Text) → automaticky se přizpůsobí světlému i tmavému
@@ -150,11 +173,11 @@ void MainWindow::buildUi()
     root->addWidget(m_videoGroup);
 
     // --- Zvuk ---
-    auto* audioGroup = new QGroupBox(QStringLiteral("Zvuk"), this);
+    auto* audioGroup = new QGroupBox(tr("Zvuk"), this);
     auto* abox = new QVBoxLayout(audioGroup);
 
     auto* micRow = new QHBoxLayout();
-    m_micCheck = new QCheckBox(QStringLiteral("Mikrofon"), this);
+    m_micCheck = new QCheckBox(tr("Mikrofon"), this);
     m_micDevice = new QComboBox(this);
     m_micDevice->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     micRow->addWidget(m_micCheck);
@@ -168,7 +191,7 @@ void MainWindow::buildUi()
     m_vuMeter->setFixedHeight(12);
     abox->addWidget(m_vuMeter);
 
-    m_sysCheck = new QCheckBox(QStringLiteral("Zvuk z počítače (systémový zvuk)"), this);
+    m_sysCheck = new QCheckBox(tr("Zvuk z počítače (systémový zvuk)"), this);
     abox->addWidget(m_sysCheck);
 
     m_vuMeterSys = new QProgressBar(this);
@@ -184,8 +207,8 @@ void MainWindow::buildUi()
     auto* outRow = new QHBoxLayout();
     m_outputDirLabel = new QLabel(this);
     m_outputDirLabel->setWordWrap(true);
-    m_changeDirBtn = new QPushButton(QStringLiteral("Změnit složku…"), this);
-    outRow->addWidget(new QLabel(QStringLiteral("Uloží se do:"), this));
+    m_changeDirBtn = new QPushButton(tr("Změnit složku…"), this);
+    outRow->addWidget(new QLabel(tr("Uloží se do:"), this));
     outRow->addWidget(m_outputDirLabel, 1);
     outRow->addWidget(m_changeDirBtn);
     root->addLayout(outRow);
@@ -193,10 +216,10 @@ void MainWindow::buildUi()
 
     // --- Vždy nahoře + nápověda ---
     auto* bottomRow = new QHBoxLayout();
-    m_alwaysOnTop = new QCheckBox(QStringLiteral("Vždy nahoře (okno nad ostatními)"), this);
+    m_alwaysOnTop = new QCheckBox(tr("Vždy nahoře (okno nad ostatními)"), this);
     auto* helpBtn = new QPushButton(QStringLiteral("?"), this);
     helpBtn->setFixedWidth(28);
-    helpBtn->setToolTip(QStringLiteral("Nápověda a informace o aplikaci"));
+    helpBtn->setToolTip(tr("Nápověda a informace o aplikaci"));
     bottomRow->addWidget(m_alwaysOnTop);
     bottomRow->addStretch();
     bottomRow->addWidget(helpBtn);
@@ -206,7 +229,7 @@ void MainWindow::buildUi()
 
     // --- Nahrávání ---
     auto* recRow = new QHBoxLayout();
-    m_recordBtn = new QPushButton(QStringLiteral("● Nahrávat"), this);
+    m_recordBtn = new QPushButton(tr("● Nahrávat"), this);
     m_recordBtn->setMinimumHeight(44);
     {   // výraznější hlavní akce (čitelnost / přístupnost)
         QFont rf = m_recordBtn->font();
@@ -232,18 +255,18 @@ void MainWindow::buildUi()
 
     // --- Tray ---
     m_trayMenu = new QMenu(this);
-    m_actStop = m_trayMenu->addAction(QStringLiteral("Zastavit nahrávání"));
+    m_actStop = m_trayMenu->addAction(tr("Zastavit nahrávání"));
     m_actStop->setEnabled(false);
-    m_actOpen = m_trayMenu->addAction(QStringLiteral("Otevřít aplikaci"));
-    m_trayMenu->addAction(QStringLiteral("O aplikaci"), this, &MainWindow::showAbout);
+    m_actOpen = m_trayMenu->addAction(tr("Otevřít aplikaci"));
+    m_trayMenu->addAction(tr("O aplikaci"), this, &MainWindow::showAbout);
     m_trayMenu->addSeparator();
-    m_actQuit = m_trayMenu->addAction(QStringLiteral("Ukončit"));
+    m_actQuit = m_trayMenu->addAction(tr("Ukončit"));
     connect(m_actStop, &QAction::triggered, this, [this]{ if (m_recording) onRecordClicked(); });
     connect(m_actOpen, &QAction::triggered, this, [this]{ showNormal(); raise(); activateWindow(); });
     connect(m_actQuit, &QAction::triggered, this, [this]{ m_forceQuit = true; qApp->quit(); });
 
     m_tray = new QSystemTrayIcon(makeStateIcon(false), this);
-    m_tray->setToolTip(QStringLiteral("Nahrávátko"));
+    m_tray->setToolTip(appDisplayName());
     m_tray->setContextMenu(m_trayMenu);
     connect(m_tray, &QSystemTrayIcon::activated, this, &MainWindow::onTrayActivated);
     m_tray->show();
@@ -259,7 +282,7 @@ void MainWindow::populateAudioDevices()
     }
     if (m_micDevices.empty()) {
         m_micCheck->setEnabled(false);
-        m_micDevice->addItem(QStringLiteral("(nenalezen žádný mikrofon)"));
+        m_micDevice->addItem(tr("(nenalezen žádný mikrofon)"));
     }
 }
 
@@ -289,10 +312,10 @@ void MainWindow::buildVideoSources()
     if (m_monitors.size() <= 1) {
         const qulonglong h = m_monitors.empty() ? 0
             : reinterpret_cast<qulonglong>(m_monitors[0].handle);
-        addItem(QStringLiteral("Celá obrazovka"), KindMonitor, h);
+        addItem(tr("Celá obrazovka"), KindMonitor, h);
     } else {
         for (const auto& m : m_monitors) {
-            addItem(QStringLiteral("Celá obrazovka — %1").arg(QString::fromStdWString(m.name)),
+            addItem(tr("Celá obrazovka — %1").arg(QString::fromStdWString(m.name)),
                     KindMonitor, reinterpret_cast<qulonglong>(m.handle));
         }
     }
@@ -303,7 +326,7 @@ void MainWindow::buildVideoSources()
         const QString app = QString::fromStdWString(w.app);
         const QString title = QString::fromStdWString(w.title);
         const QString label = app.isEmpty() ? title : QStringLiteral("%1 — %2").arg(app, title);
-        addItem(QStringLiteral("Okno: %1").arg(label), KindWindow,
+        addItem(tr("Okno: %1").arg(label), KindWindow,
                 reinterpret_cast<qulonglong>(w.handle));
     }
 
@@ -372,13 +395,13 @@ void MainWindow::updateVideoPreview()
 
     const bool audioOnly = (m_mode->currentIndex() == 1);
     if (audioOnly || m_videoSource->count() == 0) {
-        m_preview->setText(QStringLiteral("Náhled (připravuje se)"));
+        m_preview->setText(tr("Náhled (připravuje se)"));
         return;
     }
 
     const int kind = m_videoSource->currentData(Qt::UserRole).toInt();
     const qulonglong handle = m_videoSource->currentData(Qt::UserRole + 1).toULongLong();
-    if (handle == 0) { m_preview->setText(QStringLiteral("Náhled (připravuje se)")); return; }
+    if (handle == 0) { m_preview->setText(tr("Náhled (připravuje se)")); return; }
     if (kind == KindMonitor) {
         m_videoPreview->setTargetMonitor(reinterpret_cast<HMONITOR>(handle));
         m_videoPreview->startPreview();
@@ -390,7 +413,7 @@ void MainWindow::updateVideoPreview()
 
 void MainWindow::showAbout()
 {
-    const QString html = QStringLiteral(
+    const QString html = tr(
         "<h3 style='margin-bottom:2px;'>Nahrávátko</h3>"
         "<span style='color:gray;'>verze %1</span>"
         "<p>Jednoduché nahrávání obrazovky a zvuku.</p>"
@@ -425,12 +448,93 @@ void MainWindow::showAbout()
         "<a href='mailto:tnlrk@tnlrk.cz'>tnlrk@tnlrk.cz</a></p>")
         .arg(kAppVersion);
 
-    QMessageBox box(this);
-    box.setWindowTitle(QStringLiteral("O aplikaci Nahrávátko"));
-    box.setTextFormat(Qt::RichText);
-    box.setText(html);
-    box.setIconPixmap(makeStateIcon(false).pixmap(48, 48));
-    box.exec();
+    QDialog dlg(this);
+    dlg.setWindowTitle(tr("O aplikaci %1").arg(appDisplayName()));
+    auto* lay = new QVBoxLayout(&dlg);
+    // Pevná šířka obsahu + SetFixedSize → layout (zalamovaný rich-text s heightForWidth)
+    // se spočítá správně hned napoprvé; jinak by se prvky překrývaly, dokud uživatel
+    // nepohne oknem.
+    lay->setSizeConstraint(QLayout::SetFixedSize);
+
+    auto* text = new QLabel(html, &dlg);
+    text->setTextFormat(Qt::RichText);
+    text->setOpenExternalLinks(true);
+    text->setWordWrap(true);
+    text->setFixedWidth(460);
+    lay->addWidget(text);
+
+    // Texty kolem přepínače se zobrazí v PRÁVĚ VYBRANÉM jazyce (ne v aktuálním UI):
+    // pro angličtinu se přeloží z přibaleného .qm, čeština je zdrojový text.
+    // QT_TR_NOOP u volajícího zajistí, že lupdate řetězce zachytí (kontext MainWindow).
+    auto trFor = [this](const QString& lang, const char* src) -> QString {
+        if (lang == QLatin1String("cs"))
+            return QString::fromUtf8(src);
+        if (lang == QLatin1String("en")) {
+            QTranslator t;
+            if (t.load(QStringLiteral(":/i18n/nahravatko_en.qm"))) {
+                const QString s = t.translate("MainWindow", src);
+                if (!s.isEmpty()) return s;
+            }
+        }
+        return tr(src);   // auto / fallback → aktuální jazyk UI
+    };
+
+    // Volba jazyka (projeví se po restartu). Popisek je záměrně dvojjazyčný.
+    auto* langRow = new QHBoxLayout();
+    langRow->addWidget(new QLabel(QStringLiteral("Jazyk aplikace / App language:"), &dlg));
+    auto* langCombo = new QComboBox(&dlg);
+    langCombo->addItem(tr("Automaticky (podle systému)"), QStringLiteral("auto"));
+    langCombo->addItem(tr("Čeština"), QStringLiteral("cs"));
+    langCombo->addItem(QStringLiteral("English"), QStringLiteral("en"));
+    const QString curLang = currentLanguageSetting();
+    const int li = langCombo->findData(curLang);
+    langCombo->setCurrentIndex(li < 0 ? 0 : li);
+    langRow->addWidget(langCombo, 1);
+    lay->addLayout(langRow);
+
+    auto* restartNote = new QLabel(&dlg);
+    restartNote->setStyleSheet(QStringLiteral("color:gray;"));
+    restartNote->setWordWrap(true);
+    restartNote->setVisible(false);
+    lay->addWidget(restartNote);
+
+    // Tlačítko se objeví až po změně jazyka; restartuje aplikaci hned.
+    auto* restartRow = new QHBoxLayout();
+    auto* restartBtn = new QPushButton(&dlg);
+    restartBtn->setVisible(false);
+    restartRow->addWidget(restartBtn);
+    restartRow->addStretch();
+    lay->addLayout(restartRow);
+
+    connect(langCombo, &QComboBox::currentIndexChanged, &dlg,
+            [restartNote, restartBtn, langCombo, curLang, trFor](int) {
+        const QString sel = langCombo->currentData().toString();
+        saveLanguageSetting(sel);
+        const bool changed = (sel != curLang);
+        if (changed) {
+            restartNote->setText(trFor(sel, QT_TR_NOOP("Změna jazyka se projeví po restartu aplikace.")));
+            restartBtn->setText(trFor(sel, QT_TR_NOOP("Restartovat aplikaci")));
+        }
+        restartNote->setVisible(changed);
+        restartBtn->setVisible(changed);
+    });
+
+    connect(restartBtn, &QPushButton::clicked, &dlg, [this, &dlg] {
+        saveSettings();   // jazyk je už uložen; uložit i ostatní rozpracované volby
+        m_forceQuit = true;
+        // Nová instance dostane --restarted: počká, až tahle uvolní single-instance zámek.
+        QProcess::startDetached(QApplication::applicationFilePath(),
+                                {QStringLiteral("--restarted")});
+        dlg.accept();
+        qApp->quit();
+    });
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    lay->addWidget(buttons);
+
+    dlg.exec();
 }
 
 void MainWindow::checkForUpdates()
@@ -462,14 +566,14 @@ void MainWindow::checkForUpdates()
             url = QStringLiteral("https://github.com/Tnlrk/Nahravatko/releases/latest");
 
         QMessageBox box(this);
-        box.setWindowTitle(QStringLiteral("Nahrávátko — aktualizace"));
+        box.setWindowTitle(tr("%1 — aktualizace").arg(appDisplayName()));
         box.setIcon(QMessageBox::Information);
-        box.setText(QStringLiteral("Je k dispozici nová verze %1 (nainstalovaná: %2).")
+        box.setText(tr("Je k dispozici nová verze %1 (nainstalovaná: %2).")
                         .arg(tag, kAppVersion));
-        box.setInformativeText(QStringLiteral(
+        box.setInformativeText(tr(
             "Stáhněte nový balíček a nahraďte jím současnou složku aplikace."));
-        auto* dlBtn = box.addButton(QStringLiteral("Stáhnout"), QMessageBox::AcceptRole);
-        box.addButton(QStringLiteral("Později"), QMessageBox::RejectRole);
+        auto* dlBtn = box.addButton(tr("Stáhnout"), QMessageBox::AcceptRole);
+        box.addButton(tr("Později"), QMessageBox::RejectRole);
         box.exec();
         if (box.clickedButton() == dlBtn)
             QDesktopServices::openUrl(QUrl(url));
@@ -515,7 +619,7 @@ void MainWindow::setAlwaysOnTop(bool on)
 void MainWindow::onChangeOutputDir()
 {
     const QString dir = QFileDialog::getExistingDirectory(
-        this, QStringLiteral("Vyberte složku pro záznamy"), m_outputDir);
+        this, tr("Vyberte složku pro záznamy"), m_outputDir);
     if (!dir.isEmpty()) {
         m_outputDir = dir;
         m_outputDirLabel->setText(QDir::toNativeSeparators(m_outputDir));
@@ -571,7 +675,7 @@ void MainWindow::onRecordClicked()
     if (m_recording) {
         // Zastavení — graceful shutdown běží na pozadí, UI ukáže „Ukládám…".
         m_recordBtn->setEnabled(false);
-        m_recordBtn->setText(QStringLiteral("Ukládám…"));
+        m_recordBtn->setText(tr("Ukládám…"));
         m_engine->stop();
         return;
     }
@@ -580,20 +684,20 @@ void MainWindow::onRecordClicked()
 
     const bool audioOnly = (cfg.mode == RecorderEngine::Mode::AudioOnly);
     if (audioOnly && !cfg.useMicrophone && !cfg.useSystemAudio) {
-        QMessageBox::warning(this, QStringLiteral("Nahrávátko"),
-            QStringLiteral("Vyberte alespoň jeden zvukový zdroj (mikrofon nebo zvuk z počítače)."));
+        QMessageBox::warning(this, appDisplayName(),
+            tr("Vyberte alespoň jeden zvukový zdroj (mikrofon nebo zvuk z počítače)."));
         return;
     }
     if (!audioOnly && cfg.monitor == nullptr && cfg.window == nullptr) {
-        QMessageBox::warning(this, QStringLiteral("Nahrávátko"),
-            QStringLiteral("Vyberte zdroj obrazu."));
+        QMessageBox::warning(this, appDisplayName(),
+            tr("Vyberte zdroj obrazu."));
         return;
     }
     // Video bez zvuku: upozornit (zvuk už nepůjde přidat za běhu).
     if (!audioOnly && !cfg.useMicrophone && !cfg.useSystemAudio) {
-        const auto r = QMessageBox::question(this, QStringLiteral("Nahrávátko"),
-            QStringLiteral("Nemáte vybraný žádný zvuk (mikrofon ani zvuk z počítače).\n"
-                           "Zvuk nelze přidat během nahrávání. Nahrávat jen obraz bez zvuku?"),
+        const auto r = QMessageBox::question(this, appDisplayName(),
+            tr("Nemáte vybraný žádný zvuk (mikrofon ani zvuk z počítače).\n"
+               "Zvuk nelze přidat během nahrávání. Nahrávat jen obraz bez zvuku?"),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (r != QMessageBox::Yes) return;
     }
@@ -615,8 +719,8 @@ void MainWindow::setRecordingState(bool recording)
 {
     m_recording = recording;
     m_recordBtn->setEnabled(true);
-    m_recordBtn->setText(recording ? QStringLiteral("■ Zastavit")
-                                    : QStringLiteral("● Nahrávat"));
+    m_recordBtn->setText(recording ? tr("■ Zastavit")
+                                    : tr("● Nahrávat"));
     m_recordBtn->setStyleSheet(recording
         ? QStringLiteral("background:#c0392b; color:white; font-weight:bold;")
         : QString());
@@ -636,7 +740,7 @@ void MainWindow::setRecordingState(bool recording)
     } else {
         m_elapsedTimer->stop();
         m_timeLabel->setText(QStringLiteral("00:00"));
-        m_tray->setToolTip(QStringLiteral("Nahrávátko"));
+        m_tray->setToolTip(appDisplayName());
     }
 }
 
@@ -649,10 +753,10 @@ void MainWindow::onEngineStopped(const QString& outputPath)
     updateVideoPreview();    // obnovit živý náhled (nebo placeholder)
 
     QMessageBox box(this);
-    box.setWindowTitle(QStringLiteral("Nahrávátko"));
-    box.setText(QStringLiteral("Záznam byl uložen:\n%1").arg(QDir::toNativeSeparators(outputPath)));
-    auto* openBtn = box.addButton(QStringLiteral("Otevřít složku"), QMessageBox::AcceptRole);
-    box.addButton(QStringLiteral("Zavřít"), QMessageBox::RejectRole);
+    box.setWindowTitle(appDisplayName());
+    box.setText(tr("Záznam byl uložen:\n%1").arg(QDir::toNativeSeparators(outputPath)));
+    auto* openBtn = box.addButton(tr("Otevřít složku"), QMessageBox::AcceptRole);
+    box.addButton(tr("Zavřít"), QMessageBox::RejectRole);
     box.exec();
     if (box.clickedButton() == openBtn) {
         QProcess::startDetached(QStringLiteral("explorer.exe"),
@@ -664,8 +768,8 @@ void MainWindow::onEngineError(const QString& message)
 {
     if (m_recording) setRecordingState(false);
     m_recordBtn->setEnabled(true);
-    m_recordBtn->setText(QStringLiteral("● Nahrávat"));
-    QMessageBox::warning(this, QStringLiteral("Nahrávátko"), message);
+    m_recordBtn->setText(tr("● Nahrávat"));
+    QMessageBox::warning(this, appDisplayName(), message);
     updateAudioMonitors();
     updateVideoPreview();
 }
@@ -703,7 +807,7 @@ void MainWindow::updateElapsed()
                           .arg(secs / 60, 2, 10, QLatin1Char('0'))
                           .arg(secs % 60, 2, 10, QLatin1Char('0'));
     m_timeLabel->setText(t);
-    m_tray->setToolTip(QStringLiteral("Nahrávám — %1").arg(t));
+    m_tray->setToolTip(tr("Nahrávám — %1").arg(t));
 }
 
 QIcon MainWindow::makeStateIcon(bool recording) const
@@ -737,8 +841,8 @@ void MainWindow::closeEvent(QCloseEvent* event)
     }
 
     if (m_recording) {
-        const auto r = QMessageBox::question(this, QStringLiteral("Nahrávátko"),
-            QStringLiteral("Probíhá nahrávání. Zastavit nahrávání a ukončit aplikaci?"),
+        const auto r = QMessageBox::question(this, appDisplayName(),
+            tr("Probíhá nahrávání. Zastavit nahrávání a ukončit aplikaci?"),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (r != QMessageBox::Yes) { event->ignore(); return; }
         m_engine->stop();           // pošle EOF; finalizaci dokončí destruktor enginu
@@ -751,12 +855,12 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
     // Nabídka při zavření křížkem.
     QMessageBox box(this);
-    box.setWindowTitle(QStringLiteral("Nahrávátko"));
+    box.setWindowTitle(appDisplayName());
     box.setIcon(QMessageBox::Question);
-    box.setText(QStringLiteral("Co chcete udělat?"));
-    auto* quitBtn = box.addButton(QStringLiteral("Ukončit aplikaci"), QMessageBox::AcceptRole);
-    auto* trayBtn = box.addButton(QStringLiteral("Nechat běžet v liště"), QMessageBox::ActionRole);
-    box.addButton(QStringLiteral("Storno"), QMessageBox::RejectRole);
+    box.setText(tr("Co chcete udělat?"));
+    auto* quitBtn = box.addButton(tr("Ukončit aplikaci"), QMessageBox::AcceptRole);
+    auto* trayBtn = box.addButton(tr("Nechat běžet v liště"), QMessageBox::ActionRole);
+    box.addButton(tr("Storno"), QMessageBox::RejectRole);
     box.setDefaultButton(trayBtn);
     box.exec();
     auto* clicked = box.clickedButton();
@@ -770,8 +874,8 @@ void MainWindow::closeEvent(QCloseEvent* event)
         saveSettings();
         hide();
         event->ignore();
-        m_tray->showMessage(QStringLiteral("Nahrávátko"),
-            QStringLiteral("Aplikace běží na pozadí. Klikněte sem pro otevření."),
+        m_tray->showMessage(appDisplayName(),
+            tr("Aplikace běží na pozadí. Klikněte sem pro otevření."),
             QSystemTrayIcon::Information, 3000);
     } else {
         event->ignore();   // Storno

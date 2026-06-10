@@ -10,6 +10,10 @@
 #include "win32_utils.h"
 #include "recorder_engine.h"
 
+// Zobrazované jméno aplikace (značka) podle jazyka: česky „Nahrávátko", anglicky „Captaculum".
+// Interní identifikátory (settings.ini, single-instance, GitHub repo) zůstávají „Nahravatko".
+QString appDisplayName();
+
 // QComboBox, který před rozbalením nabídky umožní obnovit svůj obsah
 // (aby se objevila i okna otevřená až po startu Nahrávátka).
 class SourceComboBox : public QComboBox
