@@ -3,7 +3,7 @@
 Přenosné nahrávátko obrazovky a zvuku pro Windows. **C++20 / Qt 6 (Widgets)** + přibalený **FFmpeg**.
 Princip: WGC (video) + WASAPI (zvuk) → **named pipes** → `ffmpeg.exe` (kódování H.264/AAC).
 
-GitHub: https://github.com/Tnlrk/Nahravatko (veřejný). Hlavní větev: `main`. Vydaná verze: `v1.0`.
+GitHub: https://github.com/Tnlrk/Nahravatko (veřejný). Hlavní větev: `main`. Vydaná verze: `v1.1`.
 
 ---
 
@@ -75,7 +75,7 @@ Kód: **MIT** (`LICENSE`). Přibalený **FFmpeg = GPL** → balíček musí obsa
 
 ## Lokalizace: čeština + angličtina (větev `i18n`)
 
-Jedna **dvojjazyčná** aplikace (ne separátní anglická verze) přes Qt překladový systém. **Hotovo a otestováno** (zbývá jen sloučení do `main` + vydání).
+Jedna **dvojjazyčná** aplikace (ne separátní anglická verze) přes Qt překladový systém. **Hotovo, sloučeno do `main` a vydáno ve `v1.1`.**
 
 **Jak to funguje:**
 - Uživatelské řetězce jsou `tr("…")` (čeština = **zdrojový jazyk**, zůstává v kódu — nepřepisovat). Volné funkce mimo `QObject` (`win32_utils.cpp`) používají `QCoreApplication::translate("win32util", "…")`.
