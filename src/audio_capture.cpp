@@ -121,8 +121,13 @@ void AudioCapture::stop()
         m_go = true;            // uvolnit bránu, pokud na ní vlákno čeká
     }
     m_goCv.notify_all();
-    if (m_threadHandle)
-        CancelSynchronousIo(m_threadHandle); // odblokovat ConnectNamedPipe/WriteFile
+    if (m_threadHandle) {
+        // Opakovat zrušení I/O, dokud vlákno neskončí — jedno volání by se mohlo
+        // minout s okamžikem, kdy vlákno zrovna v blokujícím I/O není.
+        CancelSynchronousIo(m_threadHandle);
+        while (WaitForSingleObject(m_threadHandle, 100) == WAIT_TIMEOUT)
+            CancelSynchronousIo(m_threadHandle);
+    }
     m_thread.join();
     m_threadHandle = nullptr;
     m_pipe = INVALID_HANDLE_VALUE;
@@ -204,6 +209,7 @@ void AudioCapture::run()
         m_format.sampleRate = static_cast<int>(sampleRate);
         m_format.channels = wfx->nChannels;
         m_format.isFloat = isFloat;
+        m_format.bitsPerSample = wfx->wBitsPerSample;
         m_fmtReady = true;
     }
     m_fmtCv.notify_all();

@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(QStringLiteral("Nahravatko"));
     QApplication::setQuitOnLastWindowClosed(false); // okno se zavírá do tray, ne ukončení
 
-    // Single instance — pevné názvy rour by se mezi instancemi pobily
+    // Single instance — víc běžících kopií by matlo uživatele (tray ikony, zámky zařízení)
     static QSharedMemory singleInstanceGuard(QStringLiteral("Nahravatko_SingleInstance"));
     if (!singleInstanceGuard.create(1)) {
         QMessageBox::information(nullptr, QStringLiteral("Nahrávátko"),

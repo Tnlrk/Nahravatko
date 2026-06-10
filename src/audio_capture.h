@@ -15,7 +15,8 @@
 struct AudioFormatInfo {
     int sampleRate = 48000;
     int channels = 2;
-    bool isFloat = true;   // f32le (true) vs s16le (false)
+    bool isFloat = true;     // float (f32le) vs celočíselný PCM
+    int bitsPerSample = 32;  // pro PCM určuje s16le/s24le/s32le
 };
 
 // Zachytávání zvuku přes WASAPI (systémový loopback / mikrofon) + VU metr.

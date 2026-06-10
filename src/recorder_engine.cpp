@@ -9,11 +9,17 @@
 #include <QPointer>
 #include <QImage>
 
+#include <sddl.h>
+
 namespace {
-// Pevné názvy rour (jediná instance — viz single-instance guard v main.cpp).
-const QString kPipeVideo = QStringLiteral("\\\\.\\pipe\\rec_video");
-const QString kPipeLoopback = QStringLiteral("\\\\.\\pipe\\rec_loopback");
-const QString kPipeMic = QStringLiteral("\\\\.\\pipe\\rec_mic");
+// Názvy rour unikátní per proces (PID) — žádné kolize mezi uživatelskými
+// relacemi na jednom PC a ztížené podvržení názvu jiným procesem.
+QString pipeName(const wchar_t* base)
+{
+    return QStringLiteral("\\\\.\\pipe\\nahravatko_%1_%2")
+        .arg(QCoreApplication::applicationPid())
+        .arg(QString::fromWCharArray(base));
+}
 } // namespace
 
 RecorderEngine::RecorderEngine(QObject* parent) : QObject(parent) {}
@@ -79,24 +85,30 @@ QStringList RecorderEngine::buildFfmpegArgs(const Config& cfg) const
 
     // --- vstupy ---
     if (hasVideo) {
-        // BGRA (WGC dodává BGRA; FFmpeg si je převede na YUV). NV12 optimalizace přijde později.
+        // BGRA (WGC dodává BGRA; FFmpeg si je převede na YUV).
         a << QStringLiteral("-f") << QStringLiteral("rawvideo")
           << QStringLiteral("-pix_fmt") << QStringLiteral("bgra")
           << QStringLiteral("-s") << QStringLiteral("%1x%2").arg(cfg.sourceWidth).arg(cfg.sourceHeight)
           << QStringLiteral("-r") << QStringLiteral("30")
-          << QStringLiteral("-i") << kPipeVideo;
+          << QStringLiteral("-i") << pipeName(L"video");
         videoIdx = inputIndex++;
     }
 
     auto addAudioInput = [&](const AudioFormatInfo& f, const QString& pipe) {
-        a << QStringLiteral("-f") << (f.isFloat ? QStringLiteral("f32le") : QStringLiteral("s16le"))
+        // Vzorkový formát podle skutečného formátu zařízení (GetMixFormat).
+        QString fmt;
+        if (f.isFloat)                  fmt = QStringLiteral("f32le");
+        else if (f.bitsPerSample == 32) fmt = QStringLiteral("s32le");
+        else if (f.bitsPerSample == 24) fmt = QStringLiteral("s24le");
+        else                            fmt = QStringLiteral("s16le");
+        a << QStringLiteral("-f") << fmt
           << QStringLiteral("-ar") << QString::number(f.sampleRate)
           << QStringLiteral("-ac") << QString::number(f.channels)
           << QStringLiteral("-i") << pipe;
         audioIdx << inputIndex++;
     };
-    if (cfg.useSystemAudio) addAudioInput(cfg.sysFormat, kPipeLoopback);
-    if (cfg.useMicrophone)  addAudioInput(cfg.micFormat, kPipeMic);
+    if (cfg.useSystemAudio) addAudioInput(cfg.sysFormat, pipeName(L"loopback"));
+    if (cfg.useMicrophone)  addAudioInput(cfg.micFormat, pipeName(L"mic"));
 
     // --- filter_complex (video škálování + případný amix) ---
     QStringList fcParts;
@@ -209,18 +221,28 @@ bool RecorderEngine::start(const Config& cfg)
     }
 
     // 2) Vytvořit roury pro aktivní zdroje. Pořadí odpovídá buildFfmpegArgs (video, sys, mic).
-    auto makePipe = [](const wchar_t* name) -> HANDLE {
-        return CreateNamedPipeW(name, PIPE_ACCESS_OUTBOUND,
+    // Zabezpečení: DACL jen pro vlastníka (jiný lokální účet se nemůže připojit a číst
+    // záznam) + FILE_FLAG_FIRST_PIPE_INSTANCE (nelze nám podvrhnout existující rouru).
+    PSECURITY_DESCRIPTOR ownerOnlySd = nullptr;
+    ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        L"D:P(A;;GA;;;OW)", SDDL_REVISION_1, &ownerOnlySd, nullptr);
+    auto makePipe = [&](const wchar_t* base) -> HANDLE {
+        SECURITY_ATTRIBUTES sa{ sizeof(sa), ownerOnlySd, FALSE };
+        const std::wstring name = pipeName(base).toStdWString();
+        return CreateNamedPipeW(name.c_str(),
+                                PIPE_ACCESS_OUTBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE,
                                 PIPE_TYPE_BYTE | PIPE_WAIT, 1,
-                                1u << 20, 0, 0, nullptr);
+                                1u << 20, 0, 0,
+                                ownerOnlySd ? &sa : nullptr);
     };
     HANDLE hVid = INVALID_HANDLE_VALUE;
     HANDLE hSys = INVALID_HANDLE_VALUE;
     HANDLE hMic = INVALID_HANDLE_VALUE;
     bool pipeOk = true;
-    if (wantVideo)          { hVid = makePipe(L"\\\\.\\pipe\\rec_video");    pipeOk = pipeOk && hVid != INVALID_HANDLE_VALUE; }
-    if (cfg.useSystemAudio) { hSys = makePipe(L"\\\\.\\pipe\\rec_loopback"); pipeOk = pipeOk && hSys != INVALID_HANDLE_VALUE; }
-    if (cfg.useMicrophone)  { hMic = makePipe(L"\\\\.\\pipe\\rec_mic");      pipeOk = pipeOk && hMic != INVALID_HANDLE_VALUE; }
+    if (wantVideo)          { hVid = makePipe(L"video");    pipeOk = pipeOk && hVid != INVALID_HANDLE_VALUE; }
+    if (cfg.useSystemAudio) { hSys = makePipe(L"loopback"); pipeOk = pipeOk && hSys != INVALID_HANDLE_VALUE; }
+    if (cfg.useMicrophone)  { hMic = makePipe(L"mic");      pipeOk = pipeOk && hMic != INVALID_HANDLE_VALUE; }
+    if (ownerOnlySd) LocalFree(ownerOnlySd);
     if (!pipeOk) {
         if (hVid != INVALID_HANDLE_VALUE) CloseHandle(hVid);
         if (hSys != INVALID_HANDLE_VALUE) CloseHandle(hSys);
@@ -236,10 +258,20 @@ bool RecorderEngine::start(const Config& cfg)
     m_ffmpeg->setStandardErrorFile(
         QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("ffmpeg_last.log")));
     connect(m_ffmpeg, &QProcess::finished, this,
-            [this](int, QProcess::ExitStatus) {
+            [this](int exitCode, QProcess::ExitStatus) {
                 const QString out = m_cfg.outputFile;
                 teardown();
-                emit stopped(out);
+                // Úspěch hlásit jen když výstup reálně existuje (FFmpeg mohl
+                // selhat hned po startu — plný disk, nezapisovatelná složka…).
+                const QFileInfo fi(out);
+                if (fi.exists() && fi.size() > 0) {
+                    emit stopped(out);
+                } else {
+                    emit error(QStringLiteral(
+                        "Nahrávání selhalo — výstupní soubor se nepodařilo vytvořit "
+                        "(kód %1). Zkontrolujte volné místo a cílovou složku.")
+                                   .arg(exitCode));
+                }
             });
     m_ffmpeg->start(ffmpegPath(), buildFfmpegArgs(m_cfg));
     if (!m_ffmpeg->waitForStarted(5000)) {

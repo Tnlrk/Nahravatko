@@ -111,8 +111,12 @@ void VideoCapture::stop()
         m_go = true;
     }
     m_goCv.notify_all();
-    if (m_threadHandle)
+    if (m_threadHandle) {
+        // Opakovat zrušení I/O, dokud vlákno neskončí (viz AudioCapture::stop).
         CancelSynchronousIo(m_threadHandle);
+        while (WaitForSingleObject(m_threadHandle, 100) == WAIT_TIMEOUT)
+            CancelSynchronousIo(m_threadHandle);
+    }
     m_thread.join();
     m_threadHandle = nullptr;
     m_pipe = INVALID_HANDLE_VALUE;
@@ -229,8 +233,16 @@ void VideoCapture::run()
         winrt::Windows::Graphics::SizeInt32 poolSize = size;
         std::vector<unsigned char> packBuf(static_cast<size_t>(outW) * outH * 4, 0);
         DWORD lastPreview = 0;
+        std::atomic<int> handlerBusy{0};   // počet právě běžících FrameArrived callbacků
 
         auto onFrame = [&](wgc::Direct3D11CaptureFramePool const& sender, auto&&) {
+          // RAII počítadlo — po odregistrování čekáme, až všechny callbacky doběhnou,
+          // protože lambda drží lokální proměnné této funkce odkazem.
+          struct BusyGuard {
+              std::atomic<int>& c;
+              explicit BusyGuard(std::atomic<int>& cc) : c(cc) { ++c; }
+              ~BusyGuard() { --c; }
+          } guard{handlerBusy};
           try {
             auto frame = sender.TryGetNextFrame();
             if (!frame) return;
@@ -324,6 +336,8 @@ void VideoCapture::run()
         }
 
         framePool.FrameArrived(token);   // odregistrovat handler před uzavřením
+        while (handlerBusy.load() > 0)   // počkat na doběhnutí in-flight callbacku
+            Sleep(5);
         session.Close();
         framePool.Close();
     } catch (winrt::hresult_error const& e) {
