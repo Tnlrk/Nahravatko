@@ -48,6 +48,7 @@ Capture vrstvy běží na vlastních vláknech (MTA), data jdou rourami do ffmpe
 ## Klíčová rozhodnutí a konvence
 
 - **Kvalita:** Vysoká = nativní/CRF 20, Střední = max 1080p/CRF 24, Nízká = max 720p/CRF 28 (scale + pad, bez upscalingu). Video H.264 (libx264 veryfast), zvuk AAC. Audio-only = `.m4a`.
+- **Průběžný zápis (fragmentovaný MP4):** `-movflags +frag_keyframe+empty_moov`. `frag_keyframe` dělí jen podle video klíčových snímků → v režimu „Pouze zvuk" by vznikl jediný fragment držený v paměti až do Stop. Proto se pro audio-only přidává `-frag_duration 2000000` (fragment každé 2 s) + `-flush_packets 1` (bez něj fragmenty čekají v 256KB IO bufferu ≈ 11 s zvuku) — při pádu/vypnutí PC se ztratí max. ~2 s.
 - Roury přenášejí **BGRA** (ne NV12) — kvůli barevné správnosti; NV12 je možná budoucí optimalizace.
 - **`settings.ini`** (vedle exe): persistuje `mode/quality/outputDir/micDevice`. **NEpersistuje se** mikrofon / systémový zvuk / „vždy nahoře" — při startu vždy: oba zvuky zapnuté, nahoře vypnuté. Výchozí výstupní složka = **systémové Videa** (`QStandardPaths::MoviesLocation`).
 - **Verze:** konstanta `kAppVersion` v `mainwindow.cpp`. Kontrola aktualizací 3 s po startu porovnává s tagem z `releases/latest` na GitHubu.

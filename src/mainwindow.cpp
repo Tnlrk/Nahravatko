@@ -53,7 +53,7 @@ QString appDisplayName()
 }
 
 namespace {
-const QString kAppVersion = QStringLiteral("1.1");
+const QString kAppVersion = QStringLiteral("1.2");
 
 QString iniPath()
 {
