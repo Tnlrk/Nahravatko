@@ -3,7 +3,7 @@
 Přenosné nahrávátko obrazovky a zvuku pro Windows. **C++20 / Qt 6 (Widgets)** + přibalený **FFmpeg**.
 Princip: WGC (video) + WASAPI (zvuk) → **named pipes** → `ffmpeg.exe` (kódování H.264/AAC).
 
-GitHub: https://github.com/Tnlrk/Nahravatko (veřejný). Hlavní větev: `main`. Vydaná verze: `v1.1`.
+GitHub: https://github.com/Tnlrk/Nahravatko (veřejný). Hlavní větev: `main`. Vydaná verze: `v1.2`.
 
 ---
 
