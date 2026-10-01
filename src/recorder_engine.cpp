@@ -156,8 +156,14 @@ QStringList RecorderEngine::buildFfmpegArgs(const Config& cfg) const
         a << QStringLiteral("-c:a") << QStringLiteral("aac") << QStringLiteral("-b:a") << abr;
     }
 
-    // Crash-safe kontejner (dopíše fragmenty i při neočekávaném pádu).
+    // Crash-safe kontejner: fragmenty se průběžně zapisují na disk.
     a << QStringLiteral("-movflags") << QStringLiteral("+frag_keyframe+empty_moov");
+    // frag_keyframe fragmentuje jen podle video klíčových snímků → bez videa by
+    // vznikl jediný fragment zapsaný až při Stop (při pádu ztráta celé nahrávky).
+    // flush_packets: jinak by hotové fragmenty čekaly v 256KB IO bufferu (~11 s zvuku).
+    if (!hasVideo)
+        a << QStringLiteral("-frag_duration") << QStringLiteral("2000000") // µs → fragment každé 2 s
+          << QStringLiteral("-flush_packets") << QStringLiteral("1");
     a << QDir::toNativeSeparators(cfg.outputFile);
     return a;
 }
